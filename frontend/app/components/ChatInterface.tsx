@@ -24,7 +24,6 @@ export default function ChatInterface() {
         scrollToBottom();
     }, [messages, expandedEmbedding]);
 
-    // Generate a random session ID once on mount for this user session
     const [sessionId] = useState(() => Math.random().toString(36).substring(7));
 
     const sendMessage = async () => {
@@ -74,13 +73,11 @@ export default function ChatInterface() {
 
     return (
         <div className="flex flex-col h-[700px] w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-            {/* Header */}
             <div className="bg-blue-600 p-4 text-white">
                 <h2 className="text-xl font-bold">Rabobank Assistant</h2>
                 <p className="text-sm opacity-90">Powered by Azure OpenAI</p>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-zinc-50 dark:bg-zinc-950">
                 {messages.length === 0 && (
                     <div className="flex items-center justify-center h-full text-zinc-400">
@@ -104,7 +101,6 @@ export default function ChatInterface() {
                             </div>
                         </div>
 
-                        {/* Embedding Info (Only for assistant response which echoes the concept) */}
                         {msg.embedding && (
                             <div className="mt-2 text-xs flex flex-col items-start gap-1 max-w-[85%]">
                                 <button
@@ -133,7 +129,6 @@ export default function ChatInterface() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <div className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
                 <div className="flex gap-2">
                     <input

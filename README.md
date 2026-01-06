@@ -1,61 +1,92 @@
-# Technical Test Outline
+# Rabobank AI Assistant
 
-## Introduction
+A secure, full-stack AI Assistant built for Rabobank, capable of answering questions about banking services and generating text embeddings.
 
-The purpose of this technical test is to assess a candidate's practical skills in software engineering within a controlled environment. This test is designed to simulate real-world problem solving and includes an introduction, a hands-on coding session, and a follow-up discussion to understand the approach taken by the candidate. The total duration of the test is as follows:
-
-- **2 minutes** of introduction to the test setup and objectives
-- **2 hours** of hands-on engineering work
+**Live Demo:** [https://jan-frontend.jollyground-9984d166.westus2.azurecontainerapps.io/](https://jan-frontend.jollyground-9984d166.westus2.azurecontainerapps.io/)
 
 ---
 
-## The Case
+## Key Features
 
-### Explanation of the Exercise
+*   **Azure OpenAI Integration**: Utilizes `gpt-4o-mini` for chat and `text-embedding-3-large` for vector generation.
+*   **Strict Scope Enforcement**: System prompts ensure the AI *only* discusses Rabobank, Finance, and Agriculture.
+   *   *Try asking: "Who is the best footballer?" -> It will politely refuse.*
+*   **Robust Memory**: Maintains conversation context (history) per user session using a thread-safe sliding window.
+*   **Typo Tolerance**: 
+*   **Rich UI**: Markdown rendering support for bold text, lists, and headers.
+*   **Monitoring**: Fully instrumented with **Azure Application Insights** for real-time telemetry.
 
-Candidates are required to build a small backend and a frontend application that interact with each other. The backend should be capable of handling basic RESTful API requests and the candidates are required to make their backend interact with an LLM hosted on Azure (details are in the technical tips section). The frontend should display the data processed by the backend. Both components should then be deployed to Azure. 
+## Technology Stack
 
-## Tips
+*   **Frontend**: Next.js 16 (React), Tailwind CSS, TypeScript.
+*   **Backend**: Python FastAPI, OpenAI SDK, Pydantic.
+*   **Infrastructure**: Azure Container Apps (Serverless Containers), Azure Container Registry (ACR).
+*   **Monitoring**: Azure Monitor / Application Insights.
 
-To spark creativity and encourage a comprehensive approach, candidates should consider the following:
+## Architecture
 
-- Think about the user experience when interacting with the frontend.
-- Consider the scalability of the backend.
-- Look into error handling and security measures for both frontend and backend.
-- Use all tools at your disposal. We want to evaluate your ability to develop, similar to a day-to-day in the office so make smart use of Google and ChatGPT. 
+1.  **Backend (`/backend`)**:
+    *   Exposes `/chat` endpoint.
+    *   Handles Prompt Engineering (`prompts.py`).
+    *   Manages Session State.
+2.  **Frontend (`/frontend`)**:
+    *   Next.js App Router.
+    *   API Proxy (`/api/chat`) to securely route requests to the backend (avoiding CORS issues and hiding upstream URLs locally).
+3.  **Deployment**:
+    *   Both services are containerized (Docker).
+    *   Deployed to Azure Container Apps environment in `West US 2`.
 
-## Technical Details
+## How to Run Locally
 
-- Candidates will interact with an LLM (large language model) endpoint hosted on Azure to provide specific functionalities within the application. This interaction should be evident in both the backend and frontend implementations. You are allowed to connect to the models that are already pre-setup or create a new open ai deployment in your own resourcegroup.
-- Pre-setup GPT-4o-mini: https://open-ai-resource-rob.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-08-01-preview
-- Pre-setup Text-embedding: https://open-ai-resource-rob.openai.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15
-- The pre-setup API key can be found in the Key Vault storage secrets in the azure account that was setup.  Keyvault name: open-ai-keys-rob, secret name: open-ai-key-rob
-- The code can be deployed to an assigned azure resource group with your name in it. If your resource group is missing or not working well feel free to use the backup resourcegroup
-- Azure account: email:Robapplicant@outlook.com, pwd: TechnicalTester!. You might have to 2 factor authenticate. This is most easily one through the browser and you can ask Paul Miles for the code that was sent to his email. 
-- Please make sure to upload your code to this github repository that's shared with you. It's called {your-name-TT}.
-- Since everyone takse different approaches you could be blocked by permissions that aren't covered yet for the account. If that happens let us know as soon as possible and we'll give you access to the resource if the request is valid
+1.  **Clone the repo**:
+    ```bash
+    git clone <your-repo-url>
+    cd jan-korczynski-TT
+    ```
 
-## Evaluation
+2.  **Run with Docker Compose** (Recommended):
+    ```bash
+    docker-compose up --build
+    ```
+    *   Frontend: `http://localhost:3000`
+    *   Backend: `http://localhost:8000`
 
-### Expectations of the Demo
+3.  **Manual Setup**:
+    *   **Backend**:
+        ```bash
+        cd backend
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+        uvicorn main:app --reload --host 0.0.0.0 --port 8000
+        ```
+    *   **Frontend**:
+        ```bash
+        cd frontend
+        npm install
+        npm run dev
+        ```
 
-Candidates are expected to demonstrate a basic but functional application that reflects their technical abilities and understanding of modern application structures. In the demo you'll have time to explain your chain of thoughts behind the decisions you've taken during the development process. Also, you can elaborate on the setbacks, future improvements, architecture etc. 
+## Deployment Guide
 
-### Evaluation Attributes
+A helper script `deploy.sh` is included to automate building and pushing to Azure.
 
-Candidates will be evaluated based on:
+1.  **Build & Push Images**:
+    ```bash
+    ./deploy.sh
+    ```
 
-- **Creativeness**: Innovative approaches and features implemented.
-- **Capability to learn**: Adaptation and utilization of new and existing technologies.
-- **Quality code**: Readability, structure, and adherence to best practices.
+2.  **Deploy to Azure Container Apps**:
+    ```bash
+    # Backend
+    az containerapp up --name jan-backend ... --env-vars AZURE_OPENAI_API_KEY=...
 
-### Key-steps in the development
+    # Frontend
+    az containerapp up --name jan-frontend ... --env-vars BACKEND_URL=...
+    ```
 
-- A functioning backend that can process and respond to RESTful API requests.
-- A simple frontend that can display the processed data.
-- Successful deployment of both components to Azure cloud.
+## Design Decisions
 
-### Getting started
-
-- Make sure to check out your resources in azure with the account provided in the technical details
-- Start with a very basic poc before adding creative extra's
+*   **Separation of Concerns**: Backend handles ALL AI logic and state; Frontend is purely for display.
+*   **Runtime Configuration**: Frontend uses `BACKEND_URL` env var to switch between Localhost and Azure dynamically.
+*   **Security**: API Keys are never exposed to the frontend; they stay on the server. Code excludes `.env` files via `.gitignore`.

@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from openai import AzureOpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-# Azure Monitor / OpenTelemetry
 try:
     from azure.monitor.opentelemetry import configure_azure_monitor
 except ImportError:
@@ -12,7 +11,6 @@ except ImportError:
 
 load_dotenv()
 
-# Configure Azure Monitor if Connection String is present
 if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING") and configure_azure_monitor:
     configure_azure_monitor()
 
@@ -52,7 +50,6 @@ class ConversationManager:
         self.lock = asyncio.Lock()
 
     def _ensure_session(self, session_id: str):
-        """Internal helper - assumes lock is held"""
         if session_id not in self.history:
             self.history[session_id] = [
                 {"role": "system", "content": RABOBANK_SYSTEM_PROMPT}
@@ -60,7 +57,6 @@ class ConversationManager:
 
     async def get_history(self, session_id: str) -> List[dict]:
         async with self.lock:
-            # Cleanup old sessions occasionally
             self._cleanup()
             self._ensure_session(session_id)
             self.last_access[session_id] = time.time()
@@ -72,9 +68,9 @@ class ConversationManager:
             
             self.history[session_id].append({"role": role, "content": content})
             
-            # Enforce sliding window (keep system msg + last N)
+            self.history[session_id].append({"role": role, "content": content})
+            
             if len(self.history[session_id]) > self.max_history + 1:
-                # Keep system message (index 0), slice the rest
                 self.history[session_id] = [self.history[session_id][0]] + self.history[session_id][-(self.max_history):]
             
             self.last_access[session_id] = time.time()
@@ -86,7 +82,6 @@ class ConversationManager:
             del self.history[sid]
             del self.last_access[sid]
 
-# Initialize Manager
 conversation_manager = ConversationManager()
 
 class ChatRequest(BaseModel):
@@ -107,20 +102,16 @@ async def chat(request: ChatRequest):
         print("ERROR: Azure OpenAI API key is missing!")
         raise HTTPException(status_code=500, detail="Azure OpenAI API key not configured")
     
-    # Add User Message
     await conversation_manager.add_message(request.session_id, "user", request.message)
     
     try:
-        # 1. Generate Embedding
-        print("DEBUG: Generating embedding...")
         embedding_response = client.embeddings.create(
             model=embedding_deployment,
             input=request.message
         )
         embedding_vector = embedding_response.data[0].embedding
-        print("DEBUG: Embedding generated.")
+        embedding_vector = embedding_response.data[0].embedding
 
-        # 2. Get History & Generate Chat Response
         history = await conversation_manager.get_history(request.session_id)
         print(f"DEBUG: sending {len(history)} messages to LLM...")
         
@@ -129,9 +120,8 @@ async def chat(request: ChatRequest):
             messages=history
         )
         content = chat_response.choices[0].message.content
-        print("DEBUG: Chat response received.")
+        content = chat_response.choices[0].message.content
         
-        # Add Assistant Message
         await conversation_manager.add_message(request.session_id, "assistant", content)
 
         return {
